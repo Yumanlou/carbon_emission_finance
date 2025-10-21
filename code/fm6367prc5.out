@@ -1,0 +1,31 @@
+	(1)
+VARIABLES	R
+	
+ln_co2	.
+	(.)
+ln_gdp	0.628***
+	(25.80)
+green_invention_patents	-0.000***
+	(-6.21)
+green_utility_patents	0.000**
+	(2.11)
+credit	1.691
+	(0.79)
+bond	-3.988***
+	(-2.81)
+investment	0.052
+	(1.36)
+insurance	-0.941***
+	(-3.24)
+equity	-0.731
+	(-0.35)
+fund	-1.467
+	(-0.70)
+carbon_finance	0.001
+	(0.24)
+Constant	13.864***
+	(92.10)
+	
+Observations	738
+Number of province_id	31
+R-squared	0.916
