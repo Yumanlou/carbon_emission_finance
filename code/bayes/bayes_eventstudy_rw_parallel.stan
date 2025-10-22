@@ -1,7 +1,7 @@
 // 位置：carbon_emission_finance/carbon_emission_finance/code/bayes/bayes_eventstudy_rw.stan
 functions {
   // 对数似然的分块计算：把观测索引 sub 收到的区间 [start, end] 并行求和
-  real partial_normal_lpdf(int[] sub, int start, int end,
+  real partial_normal_lpdf(array[] int sub, int start, int end,
                            vector y, matrix D, matrix X,
                            vector a_prov, vector a_year,
                            vector beta, vector gamma, real sigma,
