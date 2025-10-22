@@ -14,45 +14,48 @@ data {
   vector[N] y;                        // 因变量（可已标准化）
 }
 
+// ---- parameters ----
 parameters {
-  // 事件时间效应（相对基期）
   vector[K] beta;
-
-  // 控制变量系数
   vector[P] gamma;
 
-  // 省份随机效应 & 年份效应（年份用 RW1）
-  vector[I] a_prov;
-  vector[T] a_year;
+  // 非中心化省份效应
+  vector[I] z_prov;
+  real<lower=1e-6> tau_prov;
 
-  // 方差与层级尺度
-  real<lower=0> sigma;                // 观测噪声
-  real<lower=0> tau_prov;             // 省份效应尺度
-  real<lower=0> tau_rw;               // 年份 RW1 创新项尺度
+  // RW1 的创新参数化
+  real a_year1;
+  vector[T-1] z_rw;             // 创新项 ~ N(0,1)
+  real<lower=1e-6> tau_rw;
+
+  real<lower=1e-6> sigma;       // 观测噪声
 }
 
+// ---- transformed parameters ----
+transformed parameters {
+  vector[I] a_prov = tau_prov * z_prov;
+
+  vector[T] a_year;
+  a_year[1] = a_year1;
+  for (t in 2:T)
+    a_year[t] = a_year[t-1] + tau_rw * z_rw[t-1];
+}
+
+// ---- model ----
 model {
-  // --------- 先验（弱信息，稳健） ---------
-  beta   ~ normal(0, 1);              // 事件时间效应
-  gamma  ~ normal(0, 1);              // 控制变量
-
-  a_prov ~ normal(0, tau_prov);       // 省份层级效应
-
-  // 年份效应：一阶随机游走（RW1）
-  a_year[1] ~ normal(0, 5);
-  for (t in 2:T) {
-    a_year[t] ~ normal(a_year[t-1], tau_rw);
-  }
-
-  // 尺度先验
+  // 先验
+  beta ~ normal(0, 1);
+  gamma ~ normal(0, 1);
+  z_prov ~ normal(0, 1);
+  a_year1 ~ normal(0, 5);
+  z_rw ~ normal(0, 1);
   tau_prov ~ normal(0, 1) T[0, ];
   tau_rw   ~ normal(0, 1) T[0, ];
   sigma    ~ normal(0, 1) T[0, ];
 
-  // --------- 似然 ---------
+  // 似然
   y ~ normal(D * beta + X * gamma + a_prov[prov] + a_year[year], sigma);
 }
-
 generated quantities {
   // 便于事后检查与作图的拟合值和残差
   vector[N] mu_hat;

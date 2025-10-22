@@ -140,7 +140,8 @@ fit = model.sample(
     parallel_chains=4,
     iter_warmup=2000,
     iter_sampling=2000,
-    adapt_delta=0.9,
+    adapt_delta=0.98,          # 更稳
+    max_treedepth=15
 )
 
-print(fit.summary(["beta", "sigma"]))
+print(fit.summary(vars=["beta", "sigma", "tau_rw", "tau_prov"]))
