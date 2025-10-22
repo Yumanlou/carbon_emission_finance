@@ -37,6 +37,11 @@ data {
   int<lower=1> grainsize;  // reduce_sum 并行的分块大小
 }
 
+transformed data {
+  array[N] int n_idx;
+  for (n in 1:N) n_idx[n] = n;
+}
+
 parameters {
   vector[K] beta;
   vector[P] gamma;
@@ -60,11 +65,6 @@ transformed parameters {
   a_year[1] = a_year1;
   for (t in 2:T)
     a_year[t] = a_year[t - 1] + tau_rw * z_rw[t - 1];
-}
-
-transformed data {
-  array[N] int n_idx;
-  for (n in 1:N) n_idx[n] = n;
 }
 
 model {
