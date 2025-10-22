@@ -2,7 +2,7 @@
 functions {
   // 对数似然的分块计算：把观测索引 sub 收到的区间 [start, end] 并行求和
   real partial_normal_lpdf(array[] int sub, int start, int end,
-                           vector y, matrix D, matrix X,
+                           array[] real y, matrix D, matrix X,
                            vector a_prov, vector a_year,
                            vector beta, vector gamma, real sigma,
                            array[] int prov, array[] int year) {
@@ -16,7 +16,7 @@ functions {
       linpred += a_prov[prov[n]] + a_year[year[n]];
       mu[i] = linpred;
     }
-    return normal_lpdf(y[sub[start:end]] | mu, sigma);
+    return normal_lpdf(to_vector(y[sub[start:end]]) | mu, sigma);
   }
 }
 
@@ -32,7 +32,7 @@ data {
 
   matrix[N, K] D;
   matrix[N, P] X;
-  vector[N] y;
+  array[N] real y;
 
   int<lower=1> grainsize;  // reduce_sum 并行的分块大小
 }
@@ -62,6 +62,11 @@ transformed parameters {
     a_year[t] = a_year[t - 1] + tau_rw * z_rw[t - 1];
 }
 
+transformed data {
+  array[N] int n_idx;
+  for (n in 1:N) n_idx[n] = n;
+}
+
 model {
   // 先验
   beta     ~ normal(0, 1);
@@ -76,7 +81,7 @@ model {
   // 似然（并行）
   target += reduce_sum(
               partial_normal_lpdf,
-              1:N, grainsize,
+              1n_idx, grainsize,
               y, D, X, a_prov, a_year, beta, gamma, sigma, prov, year
             );
 }

@@ -1,4 +1,4 @@
-# 文件位置：data/bayes/simple.py
+# 文件位置：data/bayes/simple_parallel.py
 import pandas as pd
 import numpy as np
 from pathlib import Path
