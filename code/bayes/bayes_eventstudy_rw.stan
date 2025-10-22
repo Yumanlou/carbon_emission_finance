@@ -6,8 +6,8 @@ data {
   int<lower=0> K;                     // 事件时间列数（已去掉一个基期列）
   int<lower=0> P;                     // 控制变量个数
 
-  int<lower=1, upper=I> prov[N];      // 每条观测所属省份（1-based）
-  int<lower=1, upper=T> year[N];      // 每条观测所属年份（1-based）
+  array[N] int<lower=1, upper=I> prov;  // ✅ 新语法
+  array[N] int<lower=1, upper=T> year;
 
   matrix[N, K] D;                     // 事件时间设计矩阵（不含基期列）
   matrix[N, P] X;                     // 控制变量矩阵
