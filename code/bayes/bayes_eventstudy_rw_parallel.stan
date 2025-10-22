@@ -81,7 +81,7 @@ model {
   // 似然（并行）
   target += reduce_sum(
               partial_normal_lpdf,
-              1n_idx, grainsize,
+              n_idx, grainsize,
               y, D, X, a_prov, a_year, beta, gamma, sigma, prov, year
             );
 }
