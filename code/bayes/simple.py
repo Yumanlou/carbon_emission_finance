@@ -30,7 +30,7 @@ if data_file is None:
     raise FileNotFoundError(f"在 {DATA_DIR} 下未找到候选数据文件：{DATA_CANDIDATES}")
 
 # Stan 文件：优先 bayes_eventstudy_rw.stan，其次 bayes_eventstudy_rw.stan
-STAN_CANDIDATES = ["bayes_eventstudy_rw.stan", "bayes_eventstudy_rw.stan"]
+STAN_CANDIDATES = ["bayes_eventstudy_rw.stan"]
 stan_file = None
 for s in STAN_CANDIDATES:
     f = (BAYES_DIR / s)
@@ -46,19 +46,41 @@ print(f"▶ 使用 Stan 文件: {stan_file.name}")
 # ============== 1) 读数据 =================
 df = pd.read_csv(data_file)
 
-# 你当前列名中 province 用的是 province_id（已按你的注释改）
+# —— 必要列检查 ——
 if "province_id" not in df.columns:
-    raise KeyError("数据缺少列 'province_id'（你之前将 province 改成了 province_id）")
-for col in ["year", "ln_so2"]:
-    if col not in df.columns:
-        raise KeyError(f"数据缺少列 '{col}'")
+    raise KeyError("数据缺少 'province_id'")
+if "year" not in df.columns:
+    raise KeyError("数据缺少 'year'")
 
-# ============== 2) 构造 1-based 连续索引（Stan 要求） =================
+# 因变量：优先使用 ln_so2；若没有则由 industrial_so2 构造
+if "ln_so2" not in df.columns:
+    if "industrial_so2" not in df.columns:
+        raise KeyError("既无 'ln_so2' 也无 'industrial_so2'，无法构造因变量")
+    # 避免 log(0)-> -inf
+    df["ln_so2"] = np.log(np.asarray(df["industrial_so2"], dtype="float64").clip(min=1e-9))
+
+# event_time 需要存在且为有限数（后面要做 D 矩阵）
+if "event_time" not in df.columns:
+    raise KeyError("数据缺少 'event_time'，请先构造：event_time = year - treat_year")
+
+# —— 丢弃关键列中的 NaN/Inf ——
+key_cols = ["province_id", "year", "event_time", "ln_so2"]
+bad_mask = ~np.isfinite(df[key_cols].to_numpy(dtype="float64")).all(axis=1)
+if bad_mask.any():
+    drop_n = int(bad_mask.sum())
+    print(f"⚠️ 丢弃 {drop_n} 行包含 NaN/Inf 的观测：{key_cols}")
+    df = df.loc[~bad_mask].copy()
+
+# —— 构造 1-based 连续索引（Stan 要求）——
 df["prov_idx"] = df["province_id"].astype("category").cat.codes + 1
 df["year_idx"] = df["year"].astype("category").cat.codes + 1
 
-# ============== 3) 因变量标准化（可选） =================
-df["y_z"] = (df["ln_so2"] - df["ln_so2"].mean()) / df["ln_so2"].std()
+# —— 安全标准化 y ——
+mu = df["ln_so2"].mean()
+sd = df["ln_so2"].std(ddof=0)
+if (not np.isfinite(sd)) or sd <= 0:
+    raise ValueError(f"'ln_so2' 标准差异常（sd={sd}），无法标准化；请检查数据。")
+df["y_z"] = (df["ln_so2"] - mu) / sd
 
 # ============== 4) 事件时间设计矩阵 D（去掉基期 -1） =================
 # 需要一列 event_time（若没有，你需要自建：event_time = year - treat_year）
@@ -79,6 +101,15 @@ if missing:
     raise KeyError(f"控制变量缺失：{missing}\n请在 data/ 预处理或改用实际列名。")
 
 X = df[ctrl_cols].copy().fillna(0.0)
+
+# 确保喂给 Stan 的所有矩阵/向量都没有 NaN/Inf
+def ensure_finite(name, arr):
+    arr_np = np.asarray(arr)
+    if not np.isfinite(arr_np).all():
+        bad_idx = np.where(~np.isfinite(arr_np))[0][:10]
+        raise ValueError(f"{name} 含 NaN/Inf，示例索引: {bad_idx}")
+
+# 在构造 D / X 之前先保证 ctrl 列存在与数值化
 
 # ============== 6) 转 numpy，并做一致性检查 =================
 N = len(df)
