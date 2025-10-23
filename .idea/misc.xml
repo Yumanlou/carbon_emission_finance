@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="gnews" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="clpyb" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="$USER_HOME$/conda_envs/clpyb" project-jdk-type="Python SDK" />
 </project>
